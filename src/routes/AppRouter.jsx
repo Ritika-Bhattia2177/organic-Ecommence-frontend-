@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Home from "../pages/Home";
 import Shop from "../pages/Shop";
+import Search from "../pages/Search";
 import About from "../pages/About";
 import Contact from "../pages/Contact";
 import Login from "../pages/Login";
@@ -26,6 +27,7 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
         <Route path="/shop" element={<Shop />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />

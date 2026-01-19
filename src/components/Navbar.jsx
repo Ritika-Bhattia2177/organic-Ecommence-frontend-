@@ -16,12 +16,19 @@ export default function Navbar() {
   const { isDark, toggleTheme } = useTheme()
   const { user, logout, isAuthenticated } = useAuth()
 
-  const handleLogout = async () => {
-    await logout()
-    toast.success('Logged out successfully')
-    navigate('/')
-    setShowUserMenu(false)
-  }
+  const handleSearch = (e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setShowUserMenu(false);
+    navigate('/');
+    toast.success('Logged out successfully');
+  };
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border-b border-gray-200/50 dark:border-gray-700/50 shadow-sm">
@@ -49,6 +56,7 @@ export default function Navbar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleSearch}
                 placeholder="Search for organic products..."
                 className="w-full pl-12 pr-4 py-3 rounded-full border-2 border-gray-200 dark:border-gray-600 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200 transition-all bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />

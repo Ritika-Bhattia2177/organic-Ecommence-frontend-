@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useMemo, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { mockProducts } from "../data/mockProducts";
 import toast from "react-hot-toast";
@@ -21,6 +21,7 @@ const Shop = () => {
   const [allProducts, setAllProducts] = useState([]);
   const [sortBy, setSortBy] = useState("featured");
   const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   // Map navbar categories to shop categories
   const categoryMapping = {
@@ -150,6 +151,12 @@ const Shop = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  e.preventDefault();
+                  navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                }
+              }}
               placeholder="Search for organic products..."
               className="w-full pl-12 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200 transition-all shadow-sm"
             />

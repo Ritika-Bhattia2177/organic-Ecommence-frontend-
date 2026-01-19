@@ -37,15 +37,17 @@ export const CartProvider = ({ children }) => {
           const response = await getCart();
           if (response.success && response.data) {
             // Transform backend cart items to match frontend format
-            const transformedItems = response.data.items.map(item => ({
-              _id: item.productId._id,
-              id: item.productId._id,
-              name: item.productId.name,
-              price: item.productId.price,
-              image: item.productId.image,
-              stock: item.productId.stock,
-              quantity: item.quantity
-            }));
+            const transformedItems = response.data.items
+              .filter(item => item && item.productId) // Filter out null items
+              .map(item => ({
+                _id: item.productId._id,
+                id: item.productId._id,
+                name: item.productId.name,
+                price: item.productId.price,
+                image: item.productId.image,
+                stock: item.productId.stock,
+                quantity: item.quantity
+              }));
             setCartItems(transformedItems);
           }
         } catch (error) {

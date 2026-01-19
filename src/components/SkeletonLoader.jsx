@@ -77,3 +77,6 @@ export const ContentSkeleton = ({ lines = 3 }) => {
     </div>
   );
 };
+
+// Default export for Search page
+export default ProductCardSkeleton;

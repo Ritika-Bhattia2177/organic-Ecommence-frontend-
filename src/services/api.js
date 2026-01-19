@@ -55,3 +55,6 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Export API_BASE_URL for use in components
+export const API_BASE_URL = API_URL;
