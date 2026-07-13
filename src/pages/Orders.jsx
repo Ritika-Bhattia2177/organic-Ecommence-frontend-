@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getMyOrders } from "../services/orderService";
+import { getMyOrders, getInvoicePdf, getOrderTracking } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
+import LocationMap from "../components/LocationMap";
 import toast from "react-hot-toast";
 
 const Orders = () => {
@@ -10,6 +11,9 @@ const Orders = () => {
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trackingOrderId, setTrackingOrderId] = useState(null);
+  const [trackingInfo, setTrackingInfo] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -62,9 +66,22 @@ const Orders = () => {
     },
   };
 
-  const downloadInvoice = (orderId) => {
-    console.log(`Downloading invoice for ${orderId}`);
-    toast.success("Invoice download coming soon!");
+  const downloadInvoice = async (orderId) => {
+    try {
+      toast.loading("Generating invoice...", { id: "invoice" });
+      const pdfBlob = await getInvoicePdf(orderId);
+      const url = window.URL.createObjectURL(new Blob([pdfBlob], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `invoice-${orderId.slice(-8)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      toast.success("Invoice downloaded successfully!", { id: "invoice" });
+    } catch (error) {
+      console.error("Error downloading invoice:", error);
+      toast.error("Failed to download invoice", { id: "invoice" });
+    }
   };
 
   if (loading) {
@@ -92,13 +109,41 @@ const Orders = () => {
     );
   }
 
-  const trackOrder = (orderId, trackingId) => {
-    console.log(`Tracking order ${orderId} with tracking ID ${trackingId}`);
-    // Implement order tracking logic
+  const trackOrder = async (orderId) => {
+    try {
+      setTrackingLoading(true);
+      const response = await getOrderTracking(orderId);
+
+      if (!response?.success) {
+        toast.error("Unable to load tracking details right now");
+        return;
+      }
+
+      setTrackingOrderId(orderId);
+      setTrackingInfo(response.data || null);
+      setExpandedOrder(orderId);
+      toast.success("Live tracking opened");
+    } catch (error) {
+      console.error("Error tracking order:", error);
+      toast.error(error?.response?.data?.message || "Failed to open tracking");
+    } finally {
+      setTrackingLoading(false);
+    }
   };
 
   const toggleExpand = (orderId) => {
     setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
+
+  const formatAddress = (order) => {
+    const address = order?.address;
+    if (!address || typeof address !== "object") {
+      return order?.shippingAddress || "Address not available";
+    }
+
+    return [address.street, address.city, address.state, address.zipCode, address.country]
+      .filter(Boolean)
+      .join(", ");
   };
 
   return (
@@ -149,6 +194,12 @@ const Orders = () => {
                   transition={{ duration: 0.3, delay: idx * 0.05 }}
                   className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
                 >
+                  {(() => {
+                    const currentStatus = statusConfig[order.status] || statusConfig.pending;
+                    const isTrackingThisOrder = trackingOrderId === order._id;
+
+                    return (
+                      <>
                   {/* Order Header */}
                   <div className="p-6 border-b border-gray-100">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -157,10 +208,10 @@ const Orders = () => {
                           <h3 className="text-xl font-bold text-gray-900">#{order._id.slice(-8)}</h3>
                           <span
                             className={`px-3 py-1 rounded-full text-sm font-bold border ${
-                              statusConfig[order.status].color
+                              currentStatus.color
                             }`}
                           >
-                            {statusConfig[order.status].icon} {statusConfig[order.status].label}
+                            {currentStatus.icon} {currentStatus.label}
                           </span>
                         </div>
                         <p className="text-gray-600">
@@ -180,7 +231,7 @@ const Orders = () => {
                           {expandedOrder === order._id ? "Hide" : "View"} Details
                           <svg
                             className={`w-5 h-5 transition-transform ${
-                              expandedOrder === order.id ? "rotate-180" : ""
+                              expandedOrder === order._id ? "rotate-180" : ""
                             }`}
                             fill="none"
                             stroke="currentColor"
@@ -200,8 +251,8 @@ const Orders = () => {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => trackOrder(order.id, order.trackingId)}
-                            disabled={!order.trackingId}
+                            onClick={() => trackOrder(order._id)}
+                            disabled={trackingLoading && isTrackingThisOrder}
                             className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,7 +269,7 @@ const Orders = () => {
                                 d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                               />
                             </svg>
-                            Track
+                            {trackingLoading && isTrackingThisOrder ? "Opening..." : "Track"}
                           </motion.button>
                         )}
 
@@ -312,7 +363,7 @@ const Orders = () => {
                                 </svg>
                                 Shipping Address
                               </h4>
-                              <p className="text-gray-700">{order.shippingAddress}</p>
+                              <p className="text-gray-700">{formatAddress(order)}</p>
                             </div>
 
                             {/* Tracking Info */}
@@ -350,6 +401,38 @@ const Orders = () => {
                               )}
                             </div>
                           </div>
+
+                          {isTrackingThisOrder ? (
+                            <div className="space-y-4">
+                              <div className="bg-white p-4 rounded-xl">
+                                <h4 className="font-bold text-gray-900 mb-3">Tracking Timeline</h4>
+                                <div className="space-y-2">
+                                  {(trackingInfo?.timeline || []).map((event, timelineIdx) => (
+                                    <div
+                                      key={`${event.status}-${timelineIdx}`}
+                                      className={`flex items-center justify-between rounded-lg px-3 py-2 ${
+                                        event.completed ? "bg-green-50 text-green-800" : "bg-gray-100 text-gray-600"
+                                      }`}
+                                    >
+                                      <span className="font-semibold capitalize">{event.status}</span>
+                                      <span className="text-xs">
+                                        {event.date ? new Date(event.date).toLocaleString() : "Pending"}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <LocationMap
+                                title={`Track Order #${order._id.slice(-8)}`}
+                                description="Live delivery partner location for this order."
+                                height="20rem"
+                                zoom={14}
+                                orderId={order._id}
+                                autoRequestCustomerLocation
+                              />
+                            </div>
+                          ) : null}
 
                           {/* Order Summary */}
                           <div className="bg-white p-4 rounded-xl">
@@ -417,7 +500,7 @@ const Orders = () => {
                   </AnimatePresence>
 
                   {/* Quick Summary (when collapsed) */}
-                  {expandedOrder !== order.id && (
+                  {expandedOrder !== order._id && (
                     <div className="p-6 pt-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -448,6 +531,9 @@ const Orders = () => {
                       </div>
                     </div>
                   )}
+                </>
+                    );
+                  })()}
                 </motion.div>
               ))}
             </AnimatePresence>

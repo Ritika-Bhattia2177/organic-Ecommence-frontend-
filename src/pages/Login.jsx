@@ -86,6 +86,7 @@ const Login = () => {
             </div>
           ),
           {
+            id: 'login-success', // Unique ID — prevents duplicate toasts
             duration: 5000,
             style: {
               background: 'linear-gradient(135deg, #000000 0%, #dc2626 100%)',

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -9,8 +9,13 @@ const GoogleAuthSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  const hasRun = useRef(false);
 
   useEffect(() => {
+    // Guard: only run once even in StrictMode / re-renders
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const handleGoogleAuth = async () => {
       try {
         // Get token from URL params
@@ -27,7 +32,7 @@ const GoogleAuthSuccess = () => {
             // Update AuthContext with user data
             login(response.data, token);
             
-            // Show success message
+            // Show success message — only once, using a unique id
             toast.success(
               (t) => (
                 <div className="flex flex-col gap-2">
@@ -41,6 +46,7 @@ const GoogleAuthSuccess = () => {
                 </div>
               ),
               {
+                id: 'google-auth-success', // unique ID prevents duplicates
                 duration: 4000,
                 style: {
                   background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
@@ -61,18 +67,18 @@ const GoogleAuthSuccess = () => {
           }
         } else {
           // If no token, redirect to login with error
-          toast.error('Authentication failed. Please try again.');
+          toast.error('Authentication failed. Please try again.', { id: 'google-auth-error' });
           navigate('/login?error=authentication_failed', { replace: true });
         }
       } catch (error) {
         console.error('❌ Google auth error:', error);
-        toast.error('Authentication failed. Please try again.');
+        toast.error('Authentication failed. Please try again.', { id: 'google-auth-error' });
         navigate('/login?error=authentication_failed', { replace: true });
       }
     };
 
     handleGoogleAuth();
-  }, [searchParams, navigate, login]);
+  }, []); // empty deps — intentionally runs only once on mount
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import LocationMap from "../components/LocationMap";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -434,6 +435,16 @@ const Contact = () => {
               </div>
             </motion.div>
           </div>
+
+          {/* Live Map */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.6 }}
+            className="mt-10"
+          >
+            <LocationMap />
+          </motion.div>
 
           {/* Visit Us CTA */}
           <motion.div

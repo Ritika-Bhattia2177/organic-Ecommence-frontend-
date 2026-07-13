@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import OptimizedImage from "../components/OptimizedImage";
 import LikeButton from "../components/LikeButton";
+import LocationMap from "../components/LocationMap";
+import DeliveryLocationModal from "../components/DeliveryLocationModal";
 import { useCart } from "../context/CartContext";
 import toast from "react-hot-toast";
 import { mockProducts } from "../data/mockProducts";
@@ -11,10 +13,31 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(true);
+  const [savedLocation, setSavedLocation] = useState(null);
   const { addToCart } = useCart();
 
   useEffect(() => {
     setTimeout(() => setLoading(false), 800);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const rawLocation = localStorage.getItem("savedCustomerLocation");
+      if (!rawLocation) {
+        return;
+      }
+
+      const parsedLocation = JSON.parse(rawLocation);
+      if (!parsedLocation) {
+        return;
+      }
+
+      setSavedLocation(parsedLocation);
+      setShowLocationModal(false);
+    } catch (error) {
+      console.error("Failed to parse saved customer location", error);
+    }
   }, []);
 
   const categories = [
@@ -113,6 +136,13 @@ const Home = () => {
     }, 1500);
   };
 
+  const handleLocationFound = (location) => {
+    setSavedLocation(location);
+    setShowLocationModal(false);
+    localStorage.setItem("savedCustomerLocation", JSON.stringify(location));
+    toast.success(location.source === "browser" ? "Location detected successfully!" : "Location saved successfully!");
+  };
+
   const createBlockbusterConfetti = () => {
     const confetti = document.createElement('div');
     confetti.className = 'blockbuster-confetti';
@@ -152,6 +182,12 @@ const Home = () => {
       transition={{ duration: 0.3 }}
       className="min-h-screen bg-white dark:bg-gray-900"
     >
+      <DeliveryLocationModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onLocationFound={handleLocationFound}
+      />
+
       {/* Top Announcement Bar */}
       <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 text-white py-3 text-center text-sm font-medium overflow-hidden">
         <motion.div
@@ -265,6 +301,22 @@ const Home = () => {
                   Watch Story
                 </motion.button>
               </motion.div>
+
+              {savedLocation ? (
+                <div className="mb-10 rounded-3xl border border-green-200 bg-white/80 p-5 shadow-xl backdrop-blur dark:border-green-800 dark:bg-gray-800/80">
+                  <p className="text-sm font-bold uppercase tracking-wide text-green-600 dark:text-green-400">
+                    Live delivery location
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                    {savedLocation.source === "browser"
+                      ? `Detected: ${savedLocation.latitude.toFixed(4)}, ${savedLocation.longitude.toFixed(4)}`
+                      : `Saved area: ${savedLocation.label}`}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    This makes the homepage feel more premium and helps customers confirm their delivery area quickly.
+                  </p>
+                </div>
+              ) : null}
 
               {/* Enhanced Stats */}
               <motion.div
@@ -383,6 +435,42 @@ const Home = () => {
             <div className="w-1.5 h-3 bg-green-600 dark:bg-green-400 rounded-full mx-auto"></div>
           </motion.div>
         </motion.div>
+      </section>
+
+      <section className="py-24 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+        <div className="container-base">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <span className="inline-block px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-sm font-bold mb-4">
+              LIVE LOCATION PREVIEW
+            </span>
+            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">
+              Track delivery with confidence
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Keep the customer marker fixed, follow the delivery partner in real time, and show a smoother, more professional experience.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <LocationMap
+              customerLocation={
+                savedLocation?.latitude !== undefined && savedLocation?.longitude !== undefined
+                  ? savedLocation
+                  : null
+              }
+              autoRequestCustomerLocation
+            />
+          </motion.div>
+        </div>
       </section>
 
       {/* Trust Badges Section */}
